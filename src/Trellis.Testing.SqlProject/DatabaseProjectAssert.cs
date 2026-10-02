@@ -65,7 +65,7 @@ public static class DatabaseProjectAssert
         {
             DacPackageExtensions.BuildPackage(efDacpac, efModel, new PackageMetadata { Name = "EfModel", Version = "1.0.0" });
             return SchemaComparisonReport.Compare(
-                databaseProjectDacpac, efDacpac, projectModel, efModel, options.IgnoreColumnOrder, cancellationToken);
+                databaseProjectDacpac, efDacpac, projectModel, efModel, options.SqlServerVersion, options.IgnoreColumnOrder, cancellationToken);
         }
         finally
         {

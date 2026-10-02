@@ -1,13 +1,17 @@
 ﻿namespace Trellis.Testing.SqlProject;
 
+using Microsoft.SqlServer.Dac.Model;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
-internal static class SqlExpressionText
+/// <summary>
+/// Reads and compares SQL expressions using the grammar of one SQL Server version.
+/// </summary>
+internal sealed class SqlExpressionText(SqlServerVersion serverVersion)
 {
     /// <summary>
     /// The expression as written, minus redundant outer parentheses; <c>(none)</c> when there is none.
     /// </summary>
-    internal static string Display(string? expression)
+    internal string Display(string? expression)
     {
         if (expression is null)
             return "(none)";
@@ -26,7 +30,7 @@ internal static class SqlExpressionText
     /// therefore parsed, and each part compared under its own rule. Quoting and redundant outer
     /// parentheses are not part of the meaning.
     /// </remarks>
-    internal static bool Equivalent(string? left, string? right, IEqualityComparer<string> identifiers)
+    internal bool Equivalent(string? left, string? right, IEqualityComparer<string> identifiers)
     {
         if (left is null || right is null)
             return left is null && right is null;
@@ -42,12 +46,28 @@ internal static class SqlExpressionText
 
     // Returns null when the text does not parse as a scalar expression, so callers can fall back to
     // an exact comparison: a difference reported wrongly is visible, one hidden is not.
-    private static ScalarExpression? Parse(string expression)
+    private ScalarExpression? Parse(string expression)
     {
-        var parser = new TSql160Parser(initialQuotedIdentifiers: true);
-        var fragment = parser.ParseExpression(new StringReader(expression), out var errors);
+        var fragment = CreateParser(serverVersion).ParseExpression(new StringReader(expression), out var errors);
         return errors.Count > 0 ? null : fragment;
     }
+
+    // An expression written for a newer server must be parsed with that server's grammar, or it would
+    // fail to parse and fall back to an exact comparison. The Azure and warehouse targets are not
+    // numbered releases; they track the newest grammar.
+    private static TSqlParser CreateParser(SqlServerVersion version) => version switch
+    {
+        SqlServerVersion.Sql90 => new TSql90Parser(initialQuotedIdentifiers: true),
+        SqlServerVersion.Sql100 => new TSql100Parser(initialQuotedIdentifiers: true),
+        SqlServerVersion.Sql110 => new TSql110Parser(initialQuotedIdentifiers: true),
+        SqlServerVersion.Sql120 => new TSql120Parser(initialQuotedIdentifiers: true),
+        SqlServerVersion.Sql130 => new TSql130Parser(initialQuotedIdentifiers: true),
+        SqlServerVersion.Sql140 => new TSql140Parser(initialQuotedIdentifiers: true),
+        SqlServerVersion.Sql150 => new TSql150Parser(initialQuotedIdentifiers: true),
+        SqlServerVersion.Sql160 => new TSql160Parser(initialQuotedIdentifiers: true),
+        SqlServerVersion.Sql170 => new TSql170Parser(initialQuotedIdentifiers: true),
+        _ => new TSql180Parser(initialQuotedIdentifiers: true),
+    };
 
     // DEFAULT 5 and DEFAULT (5) are the same default. Unwrapping in the syntax tree, not the text, means
     // a parenthesis inside a comment or literal can never be mistaken for the closing one, and
@@ -66,7 +86,7 @@ internal static class SqlExpressionText
             .Take(expression.LastTokenIndex - expression.FirstTokenIndex + 1)
             .Select(token => token.Text));
 
-    private static List<Atom>? Atoms(string expression)
+    private List<Atom>? Atoms(string expression)
     {
         var parsed = Parse(expression);
         if (parsed is null)

@@ -14,6 +14,7 @@ internal static class SchemaComparisonReport
         string efDacpac,
         TSqlModel projectModel,
         TSqlModel efModel,
+        SqlServerVersion serverVersion,
         bool ignoreColumnOrder,
         CancellationToken cancellationToken)
     {
@@ -33,19 +34,21 @@ internal static class SchemaComparisonReport
 
         // Identifiers match under the project's collation, exactly as DacFx matched them above:
         // [Score] and [score] are one column in a case-insensitive project and two in a case-sensitive one.
-        var identifiers = projectModel.CollationComparer;
+        var context = new Context(ignoreColumnOrder, projectModel.CollationComparer, new SqlExpressionText(serverVersion));
         foreach (var difference in result.Differences)
-            Describe(difference, report, ignoreColumnOrder, identifiers);
+            Describe(difference, report, context);
 
-        report.AddRange(DefaultConstraintComparison.Describe(projectModel, efModel, identifiers));
+        report.AddRange(DefaultConstraintComparison.Describe(projectModel, efModel, context.Identifiers, context.Expressions));
         return report;
     }
 
-    private static void Describe(SchemaDifference difference, List<string> report, bool ignoreColumnOrder, IEqualityComparer<string> identifiers)
+    private readonly record struct Context(bool IgnoreColumnOrder, IEqualityComparer<string> Identifiers, SqlExpressionText Expressions);
+
+    private static void Describe(SchemaDifference difference, List<string> report, Context context)
     {
         if (difference.DifferenceType == SchemaDifferenceType.Property)
         {
-            DescribeProperty(difference, report);
+            DescribeProperty(difference, report, context.Expressions);
             return;
         }
 
@@ -74,14 +77,14 @@ internal static class SchemaComparisonReport
         }
 
         var before = report.Count;
-        if (!ignoreColumnOrder
+        if (!context.IgnoreColumnOrder
             && difference.SourceObject?.ObjectType == Table.TypeClass
             && difference.TargetObject?.ObjectType == Table.TypeClass)
-            DescribeColumnOrder(difference.SourceObject, difference.TargetObject, report, identifiers);
+            DescribeColumnOrder(difference.SourceObject, difference.TargetObject, report, context.Identifiers);
 
         // Included controls deployment, not whether a child is a meaningful schema difference.
         foreach (var child in difference.Children)
-            Describe(child, report, ignoreColumnOrder, identifiers);
+            Describe(child, report, context);
 
         var onlyDefaultConstraintChildren = difference.Children.Any() && difference.Children.All(IsDefaultConstraint);
         if (report.Count == before && !onlyDefaultConstraintChildren)
@@ -91,17 +94,17 @@ internal static class SchemaComparisonReport
     private static bool IsDefaultConstraint(SchemaDifference difference) =>
         (difference.SourceObject ?? difference.TargetObject)?.ObjectType == DefaultConstraint.TypeClass;
 
-    private static void DescribeProperty(SchemaDifference difference, List<string> report)
+    private static void DescribeProperty(SchemaDifference difference, List<string> report, SqlExpressionText expressions)
     {
         var source = difference.Parent?.SourceObject;
         var target = difference.Parent?.TargetObject;
         var ownerName = source?.Name?.ToString() ?? target?.Name?.ToString() ?? "(unnamed)";
         report.Add($"{ownerName}.{difference.Name}: "
-            + $"SQL project={DescribeValue(source, difference.Name)}; "
-            + $"EF model={DescribeValue(target, difference.Name)}");
+            + $"SQL project={DescribeValue(source, difference.Name, expressions)}; "
+            + $"EF model={DescribeValue(target, difference.Name, expressions)}");
     }
 
-    private static string DescribeValue(TSqlObject? sqlObject, string name)
+    private static string DescribeValue(TSqlObject? sqlObject, string name, SqlExpressionText expressions)
     {
         if (sqlObject is null)
             return "(absent)";
@@ -115,7 +118,7 @@ internal static class SchemaComparisonReport
 
                 // DacFx keeps an expression's outer parentheses as the project wrote them while EF omits
                 // them, and the comparison already treats the two as equal, so show neither.
-                return IsExpressionLabel(name) ? SqlExpressionText.Display(value) : value;
+                return IsExpressionLabel(name) ? expressions.Display(value) : value;
             }
 
             var relationship = sqlObject.ObjectType.Relationships.FirstOrDefault(r => r.Name == metadataName);

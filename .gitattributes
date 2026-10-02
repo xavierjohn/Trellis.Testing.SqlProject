@@ -1,37 +1,38 @@
-﻿# Auto detect text files and perform LF normalization
+﻿# Auto detect text files and perform LF normalization. Git has no attribute that enforces a file's
+# encoding; UTF-8 with BOM is set in .editorconfig (charset = utf-8-bom).
 * text=auto
 
-# Source code files - enforce UTF-8
-*.cs text diff=csharp encoding=utf-8
-*.csx text diff=csharp encoding=utf-8
-*.vb text encoding=utf-8
-*.fs text encoding=utf-8
+# Source code files
+*.cs text diff=csharp
+*.csx text diff=csharp
+*.vb text
+*.fs text
 
-# Documentation - enforce UTF-8 for emoji support
-*.md text encoding=utf-8
-*.txt text encoding=utf-8
+# Documentation
+*.md text
+*.txt text
 
 # Configuration files
-*.json text encoding=utf-8
-*.xml text encoding=utf-8
-*.yml text encoding=utf-8
-*.yaml text encoding=utf-8
-*.config text encoding=utf-8
-*.props text encoding=utf-8
-*.targets text encoding=utf-8
-.editorconfig text encoding=utf-8
+*.json text
+*.xml text
+*.yml text
+*.yaml text
+*.config text
+*.props text
+*.targets text
+.editorconfig text
 
 # Project files
-*.csproj text encoding=utf-8
-*.vbproj text encoding=utf-8
-*.fsproj text encoding=utf-8
-*.slnx text encoding=utf-8
+*.csproj text
+*.vbproj text
+*.fsproj text
+*.slnx text
 
 # Scripts
-*.ps1 text encoding=utf-8
-*.sh text eol=lf encoding=utf-8
-*.cmd text encoding=utf-8
-*.bat text encoding=utf-8
+*.ps1 text
+*.sh text eol=lf
+*.cmd text
+*.bat text
 
 # Standard to msysgit - Binary files
 *.doc	 diff=astextplain binary

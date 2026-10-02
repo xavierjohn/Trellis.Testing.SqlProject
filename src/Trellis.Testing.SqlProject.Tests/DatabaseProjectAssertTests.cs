@@ -35,6 +35,21 @@ public sealed class DatabaseProjectAssertTests : IDisposable
             File.Delete(file);
     }
 
+    [Theory]
+    [InlineData(SqlServerVersion.Sql130)]
+    [InlineData(SqlServerVersion.Sql170)]
+    public void Compare_SelectedSqlServerVersion_ProjectMatchesModel_ReturnsEmptyReport(SqlServerVersion version)
+    {
+        using var context = new DefaultsContext();
+
+        DatabaseProjectAssert.Compare(
+                context,
+                BuildProject(DefaultsSchema, version: version),
+                new DatabaseProjectAssertOptions { SqlServerVersion = version },
+                TestContext.Current.CancellationToken)
+            .Should().BeEmpty();
+    }
+
     [Fact]
     public void Compare_ProjectMatchesModel_ReturnsEmptyReport() =>
         Compare(ProjectSchema).Should().BeEmpty();
@@ -589,12 +604,12 @@ public sealed class DatabaseProjectAssertTests : IDisposable
             context, BuildProject(projectSql), options, TestContext.Current.CancellationToken);
     }
 
-    private string BuildProject(string sql, string? collation = null)
+    private string BuildProject(string sql, string? collation = null, SqlServerVersion version = SqlServerVersion.Sql160)
     {
         var path = Path.Combine(Path.GetTempPath(), $"SqlProjectTests_{Guid.NewGuid():N}.dacpac");
         _tempFiles.Add(path);
         var modelOptions = collation is null ? new TSqlModelOptions() : new TSqlModelOptions { Collation = collation };
-        using var model = new TSqlModel(SqlServerVersion.Sql160, modelOptions);
+        using var model = new TSqlModel(version, modelOptions);
         model.AddObjects(sql);
         DacPackageExtensions.BuildPackage(path, model, new PackageMetadata { Name = "SqlProjectTests", Version = "1.0.0" });
         return path;

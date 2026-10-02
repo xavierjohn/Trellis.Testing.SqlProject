@@ -14,7 +14,8 @@ using Microsoft.SqlServer.Dac.Model;
 /// </remarks>
 internal static class DefaultConstraintComparison
 {
-    internal static IReadOnlyList<string> Describe(TSqlModel project, TSqlModel model, IEqualityComparer<string> identifiers)
+    internal static IReadOnlyList<string> Describe(
+        TSqlModel project, TSqlModel model, IEqualityComparer<string> identifiers, SqlExpressionText expressions)
     {
         // A column missing from one side is already reported as a column difference. Columns are named
         // as the project spells them.
@@ -30,8 +31,8 @@ internal static class DefaultConstraintComparison
         {
             projectDefaults.TryGetValue(column, out var projectExpression);
             modelDefaults.TryGetValue(column, out var modelExpression);
-            if (!SqlExpressionText.Equivalent(projectExpression, modelExpression, identifiers))
-                report.Add($"{column}.DefaultExpression: SQL project={SqlExpressionText.Display(projectExpression)}; EF model={SqlExpressionText.Display(modelExpression)}");
+            if (!expressions.Equivalent(projectExpression, modelExpression, identifiers))
+                report.Add($"{column}.DefaultExpression: SQL project={expressions.Display(projectExpression)}; EF model={expressions.Display(modelExpression)}");
         }
 
         return report;

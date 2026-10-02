@@ -15,8 +15,9 @@ public sealed record DatabaseProjectAssertOptions
     public bool IgnoreColumnOrder { get; init; }
 
     /// <summary>
-    /// The SQL Server version used to parse the EF Core model's create script. Set it to the
-    /// version the SQL project targets. Defaults to <see cref="SqlServerVersion.Sql160"/>.
+    /// The SQL Server version used to parse the EF Core model's create script and the default
+    /// expressions. Set it to the version the SQL project targets. Defaults to
+    /// <see cref="SqlServerVersion.Sql160"/>.
     /// </summary>
     public SqlServerVersion SqlServerVersion { get; init; } = SqlServerVersion.Sql160;
 }

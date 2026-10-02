@@ -133,7 +133,7 @@ public sealed record DatabaseProjectAssertOptions
 | Property | Default | Meaning |
 |---|---|---|
 | `IgnoreColumnOrder` | `false` | When `true`, a column present on both sides at different positions is not reported. Missing, extra, and mismatched columns are still reported. |
-| `SqlServerVersion` | `Sql160` | The version used to parse the model's script. Set it to the version the SQL project targets. |
+| `SqlServerVersion` | `Sql160` | The version used to parse the EF model's script **and** default expressions. Set it to the version the SQL project targets: an expression written in a newer version's grammar does not parse under an older one, and is then compared exactly, not semantically. |
 
 Leave `IgnoreColumnOrder` off unless column order genuinely does not matter to you. The SQL project
 deploys its column order, and EF Core orders owned-type columns by declaration, so a column added to
