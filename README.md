@@ -15,11 +15,19 @@ Tests run on Microsoft.Testing.Platform (xUnit v3). Run them from the repository
 dotnet test Trellis.Testing.SqlProject.slnx -c Release
 ```
 
-Verify the packed output, including the AgentDocs guidance manifest, with:
+Verify the packed output, including the AgentDocs guidance manifest. This packs into its own empty
+temporary directory, so it always checks the package built from the current sources:
 
 ```powershell
-dotnet pack Trellis.Testing.SqlProject.slnx -c Release -o artifacts
-./build/test-apireference-packaging.ps1 -PackageDirectory artifacts
+./build/test-apireference-packaging.ps1
+```
+
+To verify packages that are already packed (CI does this so the bytes checked are the bytes uploaded),
+pass a directory that holds exactly one package; the script fails if it finds more, rather than
+guessing which to verify:
+
+```powershell
+./build/test-apireference-packaging.ps1 -PackageDirectory <directory-with-one-package>
 ```
 
 Versions come from `version.json` through Nerdbank.GitVersioning, so a full git history is

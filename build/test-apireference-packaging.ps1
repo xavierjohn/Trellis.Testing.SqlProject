@@ -29,7 +29,8 @@
 
     By default the script packs into a temporary directory and cleans up after itself. Pass
     -PackageDirectory to verify packages that have ALREADY been packed. The publish workflow uses that
-    mode so the artifacts it inspects are byte-for-byte the artifacts it pushes.
+    mode so the artifacts it inspects are byte-for-byte the artifacts it pushes. The directory must hold
+    exactly one package: the script fails rather than guess which of several to verify.
 #>
 [CmdletBinding()]
 param(
@@ -98,11 +99,17 @@ try {
         throw 'System.IO.Compression.ZipFile is unavailable; cannot inspect packages.'
     }
 
-    $match = Get-ChildItem -Path $outDir -Filter "$packageId.*.nupkg" -File |
-        Where-Object { $_.Name -notlike '*.symbols.nupkg' } |
-        Select-Object -First 1
-    if (-not $match) { throw "No package produced for '$packageId'. Is it still packable?" }
-    $pkg = $match.FullName
+    # Exactly one package, never "the first". A reused output directory holds every earlier build, and
+    # picking one of them would verify bytes that are not the ones about to be uploaded or published.
+    $candidates = @(Get-ChildItem -Path $outDir -Filter "$packageId.*.nupkg" -File |
+        Where-Object { $_.Name -notlike '*.symbols.nupkg' })
+    if ($candidates.Count -eq 0) { throw "No package produced for '$packageId'. Is it still packable?" }
+    if ($candidates.Count -gt 1) {
+        throw ("Found $($candidates.Count) '$packageId' packages in '$outDir' ($(($candidates | ForEach-Object Name) -join ', ')). " +
+            'Verify one package at a time: run this script without -PackageDirectory so it packs into its own empty directory, ' +
+            'or pack into an empty directory first.')
+    }
+    $pkg = $candidates[0].FullName
 
     $zip = [System.IO.Compression.ZipFile]::OpenRead($pkg)
     try {
