@@ -1,0 +1,45 @@
+# Dependabot version update configuration.
+# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  - package-ecosystem: "nuget"
+    directory: "/"
+    # Monthly to cut PR volume. The schedule affects only version updates;
+    # security updates fire promptly regardless of cadence.
+    schedule:
+      interval: "monthly"
+
+    # The tests use FluentAssertions 7.x, the last major under the Apache-2.0 license; 8.x moved to a
+    # commercial license. Minor and patch updates are still proposed. The shipped library does not
+    # reference FluentAssertions, so consumers are free to use any version.
+    ignore:
+      - dependency-name: "FluentAssertions"
+        update-types: ["version-update:semver-major"]
+
+    groups:
+      # Shipped dependencies, which share a release cadence with the .NET SDK: DacFx (the schema
+      # comparison engine) and the EF Core packages the library and tests build against.
+      library:
+        patterns:
+          - "Microsoft.SqlServer.DacFx"
+          - "Microsoft.EntityFrameworkCore*"
+      # Test-only dependencies: the xUnit v3 runner, Microsoft.Testing.Platform extensions, FluentAssertions.
+      testing:
+        patterns:
+          - "xunit*"
+          - "Xunit.*"
+          - "Microsoft.Testing.*"
+          - "FluentAssertions"
+      # Build and packaging tooling: Nerdbank.GitVersioning, ReproducibleBuilds, the AgentDocs helper.
+      other:
+        patterns:
+          - "*"

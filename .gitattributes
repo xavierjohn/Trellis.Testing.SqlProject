@@ -1,0 +1,58 @@
+﻿# Auto detect text files and perform LF normalization. Git has no attribute that enforces a file's
+# encoding; UTF-8 with BOM is set in .editorconfig (charset = utf-8-bom).
+* text=auto
+
+# Source code files
+*.cs text diff=csharp
+*.csx text diff=csharp
+*.vb text
+*.fs text
+
+# Documentation
+*.md text
+*.txt text
+
+# Configuration files
+*.json text
+*.xml text
+*.yml text
+*.yaml text
+*.config text
+*.props text
+*.targets text
+.editorconfig text
+
+# Project files
+*.csproj text
+*.vbproj text
+*.fsproj text
+*.slnx text
+
+# Scripts
+*.ps1 text
+*.sh text eol=lf
+*.cmd text
+*.bat text
+
+# Standard to msysgit - Binary files
+*.doc	 diff=astextplain binary
+*.DOC	 diff=astextplain binary
+*.docx diff=astextplain binary
+*.DOCX diff=astextplain binary
+*.dot  diff=astextplain binary
+*.DOT  diff=astextplain binary
+*.pdf  diff=astextplain binary
+*.PDF	 diff=astextplain binary
+*.rtf	 diff=astextplain binary
+*.RTF	 diff=astextplain binary
+
+# Other binary files
+*.dll binary
+*.exe binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.snk binary
