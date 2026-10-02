@@ -23,8 +23,8 @@ temporary directory, so it always checks the package built from the current sour
 ```
 
 To verify packages that are already packed (CI does this so the bytes checked are the bytes uploaded),
-pass a directory that holds exactly one package; the script fails if it finds more, rather than
-guessing which to verify:
+pass a directory that holds exactly one `.nupkg`, this package. The script fails if it finds any other
+`.nupkg` (the workflows publish every package in the directory, so an unverified one must not be there):
 
 ```powershell
 ./build/test-apireference-packaging.ps1 -PackageDirectory <directory-with-one-package>

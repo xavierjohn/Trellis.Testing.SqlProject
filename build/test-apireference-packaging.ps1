@@ -30,7 +30,9 @@
     By default the script packs into a temporary directory and cleans up after itself. Pass
     -PackageDirectory to verify packages that have ALREADY been packed. The publish workflow uses that
     mode so the artifacts it inspects are byte-for-byte the artifacts it pushes. The directory must hold
-    exactly one package: the script fails rather than guess which of several to verify.
+    exactly one .nupkg, and it must be Trellis.Testing.SqlProject: the workflows ship every .nupkg in the
+    directory, so the script fails rather than guess which of several to verify or let an unverified
+    package ride along.
 #>
 [CmdletBinding()]
 param(
@@ -99,14 +101,16 @@ try {
         throw 'System.IO.Compression.ZipFile is unavailable; cannot inspect packages.'
     }
 
-    # Exactly one package, never "the first". A reused output directory holds every earlier build, and
-    # picking one of them would verify bytes that are not the ones about to be uploaded or published.
-    $candidates = @(Get-ChildItem -Path $outDir -Filter "$packageId.*.nupkg" -File |
-        Where-Object { $_.Name -notlike '*.symbols.nupkg' })
+    # Exactly one .nupkg in the whole directory, never "the first match". The workflows upload and
+    # publish with a *.nupkg glob, so every package in the directory is shipped: anything this script
+    # does not verify must not be there, and a reused directory holding earlier builds would otherwise
+    # verify one package while a different one is published. (A legacy .symbols.nupkg also ends in
+    # .nupkg, so it is counted here and fails the gate rather than slipping through.)
+    $candidates = @(Get-ChildItem -Path $outDir -Filter '*.nupkg' -File)
     if ($candidates.Count -eq 0) { throw "No package produced for '$packageId'. Is it still packable?" }
     if ($candidates.Count -gt 1) {
-        throw ("Found $($candidates.Count) '$packageId' packages in '$outDir' ($(($candidates | ForEach-Object Name) -join ', ')). " +
-            'Verify one package at a time: run this script without -PackageDirectory so it packs into its own empty directory, ' +
+        throw ("Found $($candidates.Count) .nupkg files in '$outDir' ($(($candidates | ForEach-Object Name) -join ', ')); expected exactly one, " +
+            "'$packageId'. Run this script without -PackageDirectory so it packs into its own empty directory, " +
             'or pack into an empty directory first.')
     }
     $pkg = $candidates[0].FullName
@@ -119,6 +123,10 @@ try {
         if (-not $nuspecEntry) { throw "No .nuspec inside '$pkg'." }
         $reader = [System.IO.StreamReader]::new($nuspecEntry.Open())
         try { $nuspec = [xml]$reader.ReadToEnd() } finally { $reader.Dispose() }
+
+        # The file name is not the identity: the package declares its own ID, and that is what is published.
+        $declaredId = $nuspec.package.metadata.id
+        if ($declaredId -ne $packageId) { throw "'$pkg' declares package ID '$declaredId', expected '$packageId'." }
 
         $readmeText = ''
         $readmeEntry = $zip.GetEntry('README.md')
