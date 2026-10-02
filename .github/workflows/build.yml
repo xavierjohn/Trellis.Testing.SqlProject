@@ -1,18 +1,35 @@
-﻿# Builds, tests and packs Trellis.Testing.SqlProject on every change.
-name: Build
+﻿# Builds, tests and packs Trellis.Testing.SqlProject on every change, and publishes it to nuget.org on a
+# manual run. One workflow, as in xavierjohn/Trellis.AgentDocs.Packaging.
+#
+# Publishing: run this workflow manually (Actions > Build and publish > Run workflow) from main with
+# "Verify and package without publishing" turned OFF. The default is a dry run, which builds, tests,
+# packs and verifies the package but pushes nothing. This package is versioned and published
+# independently of the Trellis framework packages.
+#
+# One-time setup on nuget.org and GitHub:
+#   - a Trusted Publishing policy on nuget.org for repository owner xavierjohn, repository
+#     Trellis.Testing.SqlProject, workflow file build.yml and no environment. The policy is bound to
+#     this FILE NAME: renaming the workflow invalidates it.
+#   - a repository VARIABLE (not a secret; it is only the nuget.org profile name) named NUGET_USER.
+name: Build and publish
 
 on:
-  workflow_dispatch:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Verify and package without publishing'
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
 jobs:
-  build-test:
+  build:
     name: build + test
     runs-on: ubuntu-latest
     steps:
@@ -51,7 +68,8 @@ jobs:
       # Packaging is the only place the guidance wiring is observable. A broken payload path or a
       # malformed manifest leaves the build and the tests entirely green while shipping no
       # documentation at all, so this gate inspects the .nupkg itself and runs the published
-      # `agentdocs validate --strict` over it.
+      # `agentdocs validate --strict` over it. It also requires that the directory holds exactly one
+      # package, so nothing unverified can ride along into the upload or the publish.
       #
       # Verifies the artifacts packed above rather than packing its own copy, so what is uploaded
       # below is exactly what was checked.
@@ -59,10 +77,66 @@ jobs:
         shell: pwsh
         run: ./build/test-apireference-packaging.ps1 -Configuration Release -PackageDirectory artifacts
 
-      - name: Upload packages
+      - name: Upload package
         uses: actions/upload-artifact@v7
-        if: ${{ success() }}
         with:
           name: nupkg
           path: artifacts/*.nupkg
+          if-no-files-found: error
           retention-days: 14
+
+  publish:
+    name: publish to nuget.org
+    if: ${{ github.event_name == 'workflow_dispatch' && !inputs.dry_run && github.ref == 'refs/heads/main' }}
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Download package
+        uses: actions/download-artifact@v8
+        with:
+          name: nupkg
+          path: artifacts
+
+      # The package is verified again after the download, so the bytes checked are the bytes pushed.
+      - name: Verify API reference packaging
+        shell: pwsh
+        run: ./build/test-apireference-packaging.ps1 -Configuration Release -PackageDirectory artifacts
+
+      # Nerdbank.GitVersioning appends a .g<commit> suffix to versions built from any ref that is not
+      # a public release (main). Such a version is a valid package but a dead end on nuget.org: it can
+      # never be superseded by the clean version of the same build.
+      - name: Reject non-public-release versions
+        shell: pwsh
+        run: |
+          $suffixed = @(Get-ChildItem artifacts/*.nupkg | Where-Object { $_.Name -match '\.g[0-9a-f]{8,}\.nupkg$' })
+          if ($suffixed.Count -gt 0) {
+            Write-Host "::error::Refusing to publish a non-public-release version: $($suffixed.Name -join ', ')"
+            exit 1
+          }
+          Write-Host "The package carries a public-release version."
+
+      - name: Exchange OIDC token for a short-lived NuGet.org key
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Publish to NuGet.org
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          dotnet nuget push "artifacts/*.nupkg" --api-key $env:NUGET_API_KEY `
+            --source https://api.nuget.org/v3/index.json --skip-duplicate
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to publish the package.' }
