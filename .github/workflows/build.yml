@@ -1,0 +1,68 @@
+﻿# Builds, tests and packs Trellis.Testing.SqlProject on every change.
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: build + test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Nerdbank.GitVersioning derives the version from git height, so it needs the full
+          # history. A shallow clone yields a wrong (or failed) version rather than an error.
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore Trellis.Testing.SqlProject.slnx
+
+      - name: Build
+        run: dotnet build Trellis.Testing.SqlProject.slnx --no-restore -c Release
+
+      - name: Test
+        run: dotnet test Trellis.Testing.SqlProject.slnx --no-build -c Release
+
+      - name: Pack
+        run: dotnet pack Trellis.Testing.SqlProject.slnx --no-build -c Release -o artifacts
+
+      # Packaging is the only place the guidance wiring is observable. A broken payload path or a
+      # malformed manifest leaves the build and the tests entirely green while shipping no
+      # documentation at all, so this gate inspects the .nupkg itself and runs the published
+      # `agentdocs validate --strict` over it.
+      #
+      # Verifies the artifacts packed above rather than packing its own copy, so what is uploaded
+      # below is exactly what was checked.
+      - name: Verify API reference packaging
+        shell: pwsh
+        run: ./build/test-apireference-packaging.ps1 -Configuration Release -PackageDirectory artifacts
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v7
+        if: ${{ success() }}
+        with:
+          name: nupkg
+          path: artifacts/*.nupkg
+          retention-days: 14

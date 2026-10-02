@@ -1,0 +1,27 @@
+﻿<Solution>
+  <Folder Name="/.github/">
+    <File Path=".github/dependabot.yml" />
+  </Folder>
+  <Folder Name="/.github/workflows/">
+    <File Path=".github/workflows/build.yml" />
+    <File Path=".github/workflows/publish-nuget.yml" />
+  </Folder>
+  <Folder Name="/Docs/api_reference/">
+    <File Path="docs/api_reference/trellis-api-testing-sqlproject.md" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+    <File Path="build/test-apireference-packaging.ps1" />
+    <File Path="global.json" />
+    <File Path="nuget.config" />
+    <File Path="src/Directory.Build.props" />
+    <File Path="src/Directory.Build.targets" />
+    <File Path="version.json" />
+  </Folder>
+  <Folder Name="/Trellis.Testing.SqlProject/">
+    <Project Path="src/Trellis.Testing.SqlProject/Trellis.Testing.SqlProject.csproj" />
+    <Project Path="src/Trellis.Testing.SqlProject.Tests/Trellis.Testing.SqlProject.Tests.csproj" />
+    <File Path="src/Trellis.Testing.SqlProject/README.md" />
+  </Folder>
+</Solution>

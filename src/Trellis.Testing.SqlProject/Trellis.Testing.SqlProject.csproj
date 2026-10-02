@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Trellis.Testing.SqlProject</PackageId>
+    <Description>Test helper that proves a SQL Server database project (DACPAC) matches an EF Core model - reports missing, extra, mismatched, and mis-ordered columns in plain language without needing a running database</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- Only ever loaded by a test host, never AOT-published, and DacFx is not annotated for trimming. -->
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+  </PropertyGroup>
+
+  <!--
+    Publishes the LLM-facing API reference as AgentDocs guidance. Restoring the package never installs
+    anything: a consumer opts in with the Trellis.AgentDocs local tool and approves this package (see
+    the README). The helper is a build-only dependency (PrivateAssets="all"): it packs the document at
+    its root path and generates guidance/reference-manifest.json (SHA-256, onDemand usage,
+    description) at pack time, and adds nothing to the package's dependencies or build assets.
+  -->
+  <PropertyGroup>
+    <PackageGuidanceDocument>$(MSBuildThisFileDirectory)..\..\docs\api_reference\trellis-api-testing-sqlproject.md</PackageGuidanceDocument>
+    <PackageGuidancePath>trellis-api-testing-sqlproject.md</PackageGuidancePath>
+    <PackageGuidanceUsage>onDemand</PackageGuidanceUsage>
+    <PackageGuidanceDescription>Open when a SQL Server database project (DACPAC) is the schema source of truth beside an EF Core model and a test must prove they match, or when such a drift test only says 'Change Table'.</PackageGuidanceDescription>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Trellis.Testing.SqlProject.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Trellis.AgentDocs.Packaging" Version="0.1.0-preview.19" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+    <PackageReference Include="Microsoft.SqlServer.DacFx" Version="170.5.96" />
+  </ItemGroup>
+</Project>

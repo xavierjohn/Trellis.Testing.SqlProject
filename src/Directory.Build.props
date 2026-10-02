@@ -1,0 +1,42 @@
+﻿<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+
+    <Authors>Xavier John</Authors>
+    <Company>Xavier John</Company>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/xavierjohn/Trellis.Testing.SqlProject</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/xavierjohn/Trellis.Testing.SqlProject.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageTags>trellis;testing;sql-server;dacpac;ef-core;schema-drift;database-project;sqlproj</PackageTags>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!--
+      Versions come from version.json via Nerdbank.GitVersioning, matching xavierjohn/Trellis and its
+      sibling repositories. VersionPrefix and VersionSuffix are deliberately absent - setting either
+      here would override the computed version and silently reintroduce hand-maintained numbers.
+    -->
+
+    <!--
+      Stop Nerdbank.GitVersioning from exporting cloud build variables from MSBuild. Its
+      SetCloudBuildVersionVars target appends to the file named by $GITHUB_ENV once per project, and
+      parallel MSBuild nodes tear each other's lines on Linux, which the runner rejects with
+      "Unable to process file command 'env'". Version stamping is unaffected: it comes from
+      GetBuildVersion, not from this target.
+    -->
+    <NBGV_SetCloudBuildVersionVars>false</NBGV_SetCloudBuildVersionVars>
+
+    <!-- DotNet.ReproducibleBuilds bundles SourceLink and sets Deterministic, ContinuousIntegrationBuild and EmbedUntrackedSources. -->
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nerdbank.GitVersioning" Version="3.10.94" PrivateAssets="all" />
+    <PackageReference Include="DotNet.ReproducibleBuilds" Version="2.0.5" PrivateAssets="All" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,133 @@
+﻿# Manual publish of Trellis.Testing.SqlProject to nuget.org via NuGet Trusted Publishing (OIDC).
+#
+# This package is versioned and published independently of the Trellis framework packages.
+#
+# Defaults to a dry run (pack only). Set dry_run = false to publish. Requires a Trusted Publishing
+# policy on nuget.org for repository owner xavierjohn, repository Trellis.Testing.SqlProject, workflow
+# file publish-nuget.yml and environment empty for the publish job, plus the NUGET_USER repository
+# secret.
+#
+# The Trusted Publishing policy is bound to this FILE NAME. Renaming this workflow invalidates the
+# policy and the publish step will fail to authenticate until the policy is updated to match.
+name: Publish to NuGet.org
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (pack only, do not push)'
+        required: false
+        default: 'true'
+        type: choice
+        options: [ 'true', 'false' ]
+
+permissions: {}
+
+jobs:
+  validate-ref:
+    name: validate protected release ref
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require a protected public-release ref
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_PROTECTED -ne 'true') {
+            Write-Host "::error::Publishing requires a protected branch."
+            exit 1
+          }
+          if ($env:GITHUB_REF -ne 'refs/heads/main' -and
+              $env:GITHUB_REF -notlike 'refs/heads/release/v*') {
+            Write-Host "::error::Dispatch from main or a protected release/v* branch."
+            exit 1
+          }
+
+  build-package:
+    name: build packages
+    needs: validate-ref
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Build + test (gate)
+        run: |
+          dotnet build Trellis.Testing.SqlProject.slnx -c Release
+          dotnet test Trellis.Testing.SqlProject.slnx --no-build -c Release
+
+      - name: Pack
+        run: dotnet pack Trellis.Testing.SqlProject.slnx -c Release -o nupkg
+
+      # Last line of defence before shipping: a package can build green and carry no documentation
+      # at all. Deliberately verifies the artifacts produced by the Pack step above rather than
+      # packing its own copy, so the packages inspected here are the exact bytes pushed below.
+      - name: Verify API reference packaging
+        shell: pwsh
+        run: ./build/test-apireference-packaging.ps1 -Configuration Release -PackageDirectory nupkg
+
+      - name: Upload verified packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: verified-nupkg
+          path: nupkg/*.nupkg
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: publish to nuget.org
+    needs: build-package
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Download verified packages
+        uses: actions/download-artifact@v8
+        with:
+          name: verified-nupkg
+          path: nupkg
+
+      - name: List packages
+        run: ls -lh nupkg/*.nupkg
+
+      # Nerdbank.GitVersioning appends a .g<commit> suffix to versions built from any ref that is
+      # not a public release (main or release/v*). Such a version is a valid package but a dead end
+      # on nuget.org: it can never be superseded by the clean version of the same build.
+      - name: Reject non-public-release versions
+        shell: pwsh
+        run: |
+          $suffixed = @(Get-ChildItem nupkg/*.nupkg | Where-Object { $_.Name -match '\.g[0-9a-f]{8,}\.nupkg$' })
+          if ($suffixed.Count -gt 0) {
+            Write-Host "::error::Refusing to publish a non-public-release version: $($suffixed.Name -join ', ')"
+            Write-Host "Dispatch this workflow from main (or a release/v* branch) instead."
+            exit 1
+          }
+          Write-Host "All packages carry public-release versions."
+
+      - name: NuGet login (OIDC trusted publishing)
+        id: login
+        if: ${{ inputs.dry_run == 'false' }}
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Publish to NuGet
+        if: ${{ inputs.dry_run == 'false' }}
+        run: >
+          dotnet nuget push "nupkg/*.nupkg"
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+      - name: Dry-run summary
+        if: ${{ inputs.dry_run == 'true' }}
+        run: |
+          echo "DRY RUN — packages built but NOT published. Set dry_run = false to publish:"
+          ls -lh nupkg/*.nupkg

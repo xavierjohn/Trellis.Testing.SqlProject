@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+
+    <!-- xunit.v3 runs on Microsoft.Testing.Platform, which hosts tests in the test executable itself
+         rather than under a VSTest adapter. Both properties are required: MTP needs an entry point,
+         and the runner must be selected explicitly. -->
+    <OutputType>Exe</OutputType>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+
+    <!-- Test method names are Method_Scenario_Expectation. -->
+    <NoWarn>$(NoWarn),CA1707</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="4.0.1" />
+    <PackageReference Include="FluentAssertions" Version="7.2.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Trellis.Testing.SqlProject\Trellis.Testing.SqlProject.csproj" />
+  </ItemGroup>
+</Project>
