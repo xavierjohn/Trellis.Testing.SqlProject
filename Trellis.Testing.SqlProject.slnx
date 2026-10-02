@@ -4,7 +4,6 @@
   </Folder>
   <Folder Name="/.github/workflows/">
     <File Path=".github/workflows/build.yml" />
-    <File Path=".github/workflows/publish-nuget.yml" />
   </Folder>
   <Folder Name="/Docs/api_reference/">
     <File Path="docs/api_reference/trellis-api-testing-sqlproject.md" />
