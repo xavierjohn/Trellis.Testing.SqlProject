@@ -29,8 +29,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Trellis.AgentDocs.Packaging" Version="0.1.0-preview.19" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+    <PackageReference Include="Trellis.AgentDocs.Packaging" Version="1.0.2" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.14" />
     <PackageReference Include="Microsoft.SqlServer.DacFx" Version="170.5.96" />
   </ItemGroup>
 </Project>
